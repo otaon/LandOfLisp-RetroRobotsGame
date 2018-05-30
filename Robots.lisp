@@ -1,44 +1,112 @@
 (defun robots ()
-  (loop named main
-       with directions = '((q . -65) (w . -64) (e . -63)
-                           (a . -1)            (d . 1) 
-                           (z . 63)  (x . 64)  (c . 65))
-       for pos = 544
-       then (progn (format t "~%qwe/asd/zxc to move,(t)eleport, (l)eave:")
-                   (force-output)
-                   (let* ((c (read))
-                          (d (assoc c directions)))
-                     (cond (d (+ pos (cdr d)))
-                           ((eq 't c) (random 1024))
-                           ((eq 'l c) (return-from main 'bye))
-                           (t pos))))
-       for monsters = (loop repeat 10
-                            collect (random 1024))
-       then (loop for mpos in monsters
-                  collect (if (> (count mpos monsters) 1)
-                              mpos
-                              (cdar (sort (loop for (k . d) in directions
-                                                for new-mpos = (+ mpos d)
-                                                collect (cons (+ (abs (- (mod new-mpos 64)
-                                                                         (mod pos 64)))
-                                                                 (abs (- (ash new-mpos -6)
-                                                                         (ash pos -6))))
-                                                              new-mpos))
-                                          '<
-                                          :key #'car))))
-       when (loop for mpos in monsters
-                  always (> (count mpos monsters) 1))
-       return 'player-wins
-       do (format t
-                  "~%|~{~<|~%|~,65:;~A~>~}|"
-                  (loop for p
-                        below 1024
-                        collect (cond ((member p monsters)
-                                       (cond ((= p pos) (return-from main 'player-loses))
-                                             ((> (count p monsters) 1) #\#)
-                                             (t #\A)))
-                                      ((= p pos)
-                                       #\@)
-                                      (t
-                                       #\ ))))))
+  "レトロなロボットゲーム
+   全てのロボットはひたすらプレーヤーに向かって向かってくる
+   ロボット同士をぶつけるとスクラップにできる
+   ロボットをスクラップにぶつけることでもスクラップにできる"
+  (loop named main  ; ループにmainと名付けることでいつでもreturn-fromを使ってループから抜けられる
+        ;; ゲーム盤の大きさ
+        ;; 幅:64文字
+        ;; 高さ:16行
+
+        ;; -------------------------------------------------
+        ;; ローカル変数
+        ;; -------------------------------------------------
+        
+        ;; 各方向に移動するために加算するオフセット
+        with directions = '((q . -65) (w . -64) (e . -63)
+                            (a . -1)  (s . 0)   (d . 1) 
+                            (z . 63)  (x . 64)  (c . 65))
+
+        ;; -------------------------------------------------
+        ;; 初期化
+        ;; -------------------------------------------------
+        
+        ;; プレーヤーの初期位置
+        for pos = 544
+        
+        ;; -------------------------------------------------
+        ;; ループ処理
+        ;; -------------------------------------------------
+        
+        then (progn (format t "~%qwe/asd/zxc to move,(t)eleport, (l)eave:")
+                    ;; データバッファリングせず強制的に出力する
+                    (force-outpu)
+                    (let* ((c (read))   ; プレーヤーの進む方向を表す文字
+                           (d (assoc c directions)))    ; プレーヤーの進む方向
+                      ;; プレイヤーの進む方向が有効: 新しいプレーヤーの位置を返す
+                      ;; t：プレーヤーのテレポート先をランダムに設定する
+                      ;; l: ゲーム終了
+                      ;; その他: 動かない
+                      (cond (d (+ pos (cdr d)))
+                            ((eq 't c) (random 1024))
+                            ((eq 'l c) (return-from main 'bye))
+                            (t pos))))
+
+        ;; -------------------------------------------------
+        ;; 初期化
+        ;; -------------------------------------------------
+        
+        ;; モンスター10体分の初期位置
+        for monsters = (loop repeat 10
+                             collect (random 1024))
+        
+        ;; -------------------------------------------------
+        ;; ループ処理
+        ;; -------------------------------------------------
+        
+        ;; モンスターが2体以上重なっていたら動かない
+        ;; モンスターが1体だけなら、プレーヤーに一直線に向かう
+        then (loop for mpos in monsters
+                   collect (if (> (count mpos monsters) 1)
+                               ;; モンスターが2体以上同じ位置にいたら動かない
+                               mpos
+                               ;; モンスターがその位置に1体だけいたら動く
+                               ;; 新しい位置候補のうちプレーヤーに一番近いものを選ぶ
+                               (cdar (sort (loop for (k . d) in directions
+                                                 ;; 
+                                                 for new-mpos = (+ mpos d)
+                                                 collect (cons (+
+                                                             ;; 新しいx座標を計算する
+                                                             (abs (- (mod new-mpos 64)
+                                                                     (mod pos 64)))
+                                                             ;; 新しいy座標を計算する
+                                                             (abs (- (ash new-mpos -6)
+                                                                     (ash pos -6))))
+                                                               new-mpos))
+                                           '<   ; ソートのルールは昇順
+                                           :key #'car))))
+
+        ;; モンスターが任意の場所で2体以上重なって存在していたらプレーヤーの勝利
+        when (loop for mpos in monsters
+                   always (> (count mpos monsters) 1))
+        return 'player-wins
+
+        ;; 勝敗が未定なら、マップを表示する
+        do (format t
+                   "~%|~{~<|~%|~,65:;~A~>~}|"
+                   (loop for p
+                         below 1024
+                         ;; プレーヤーの
+                         collect (cond ((member p monsters)
+                                        ;; 同じ位置にモンスターとプレーヤーがいたら敗北
+                                        (cond ((= p pos) (return-from main 'player-loses))
+                                              ;; モンスターが2体以上いたらスクラップを表示
+                                              ((> (count p monsters) 1) #\#)
+                                              ;; モンスターを表示
+                                              (t #\A)))
+                                       ;; モンスターがおらずプレーヤーがいたら@を表示
+                                       ((= p pos)
+                                        #\@)
+                                       ;; 何もいなかったらスペースを表示
+                                       (t
+                                        #\ ))))))
+
+;; format の制御シーケンスの説明
+; ~%|       : 改行して左上の|を表示
+; ~{~<      : 繰り返しを開始
+; |~%|      : 右端の|と改行と左端の|を表示
+; ~,65:;    : 65文字分表示したら上記の|~%|を表示
+; ~A        : 文字を表示する
+; ~>~}      : 繰り返しを終了
+; |         : 右下の|を表示
 
